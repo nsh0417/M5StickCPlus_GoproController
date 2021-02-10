@@ -18,10 +18,11 @@
 // LEDのON/OFF
 #define LED_ON  LOW
 #define LED_OFF HIGH
-// 録画時の表示メッセージ
-#define SETUP_MESSAGE "Gopro setup completed!"
-#define START_REC "Recording started."
-#define STOP_REC "Recording stopped."
+// 表示メッセージ
+#define MESSAGE_SETUP "Gopro setup completed!"
+#define MESSAGE_START_REC "Recording started."
+#define MESSAGE_STOP_REC "Recording stopped."
+#define MESSAGE_KEEP_ALIVE_OK "keep alive: OK"
 // KEEP ALIVE間隔(msec)
 #define KEEP_ALIVE_MSEC 30 * 1000
 
@@ -101,7 +102,7 @@ void loop() {
  * @return boolean 成功/失敗
  */
 boolean gopro_setup() {
-  return control_gopro(GOPRO_SETUP, LED_OFF, SETUP_MESSAGE);
+  return control_gopro(GOPRO_SETUP, LED_OFF, MESSAGE_SETUP);
 }
 /**
  * @brief 録画開始
@@ -109,7 +110,7 @@ boolean gopro_setup() {
  * @return boolean 成功/失敗
  */
 boolean start_rec() {
-  return control_gopro(GOPRO_REC_START, LED_ON, START_REC);
+  return control_gopro(GOPRO_REC_START, LED_ON, MESSAGE_START_REC);
 }
 /**
  * @brief 録画停止
@@ -117,7 +118,7 @@ boolean start_rec() {
  * @return boolean 成功/失敗
  */
 boolean stop_rec() {
-  return control_gopro(GOPRO_REC_STOP, LED_OFF, STOP_REC);
+  return control_gopro(GOPRO_REC_STOP, LED_OFF, MESSAGE_STOP_REC);
 }
 boolean get_status() {
   return control_gopro(GOPRO_STATUS, LED_OFF, "Get Status!");
@@ -161,7 +162,7 @@ void keep_alive(void* arg) {
       http.begin(GOPRO_REC_START);
       int http_code = http.GET();
       if (http_code == HTTP_CODE_OK) {
-        M5.Lcd.println("keep alive: OK");
+        M5.Lcd.println(MESSAGE_KEEP_ALIVE_OK);
       } else {
         M5.Lcd.printf("Recording is dead, or network unreachtable!: %d\n", http_code);
       }
