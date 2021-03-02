@@ -2,16 +2,31 @@
  * M5StickC+をGoProと接続し、M5ボタンで録画開始/停止を行う
  *
  * note
- * M5StickC : https://make-muda.net/2019/09/6906/
- * M5StickC+: https://github.com/m5stack/M5StickC-Plus
- * https://msr-r.net/m5stack-wifi/
+ * - 開発者が持つGoProはHERO+のみのため、それ用の動作になります。
+ * - 各APIは下記を参考にしているので、そちらを見て書き換えてください。
+ * - [goprowifihack](https://github.com/KonradIT/goprowifihack/)
+ *
+ * - M5StickC : https://make-muda.net/2019/09/6906/
+ * - M5StickC+: https://github.com/m5stack/M5StickC-Plus
+ * - https://msr-r.net/m5stack-wifi/
  *
  * TODO: 追加予定機能
  * 1. 画面スリープ、CPUクロック低下、LCD低下（バッテリ対策）
+ *    - 画面スリープはしない方がいいかも、ということで未対応
+ *      - [M5StickCであそぶ 〜バッテリーを使う〜 MUDAなことをしよう](https://make-muda.net/2019/09/6946/)
+ * 2. メッセージが古いものから消えるように対応する
+ * 3. 画面表示をアイコンとか使って表示する
+ * 4. コメントの書き方とかが適当なので修正する
  */
 #include <M5StickCPlus.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+
+// LCDの明るさ（min 7 /max 12)
+// https://lang-ship.com/reference/unofficial/M5StickC/Class/AXP192/
+#define LCD_BRIGHTNESS 10
+// CPU周波数: 240(default), 160, 80, 40, 20, 10から選択可
+#define CPU_FREQUENCY_MHZ 80
 
 // GPIO
 #define LED_PIN   10
@@ -27,8 +42,9 @@
 #define KEEP_ALIVE_MSEC 30 * 1000
 
 // GoPro接続情報
-#define SSID "********"
-#define PASSWORD "********"
+// FIXME: ユーザ独自の設定ファイルとかにして分けたい
+#define SSID "gopro"
+#define PASSWORD "gopro"
 
 // GoPro APIのURI
 // note : https://github.com/KonradIT/goprowifihack/blob/master/HERO/WifiCommands.md
@@ -60,6 +76,16 @@ void setup() {
   // Pin設定
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LED_OFF);
+
+  // 画面の明るさを設定
+  M5.Axp.ScreenBreath(LCD_BRIGHTNESS);
+
+  // CPU周波数設定
+  // XXX: setCpuFrequencyMhz()で設定が空振ることがあるのか、以後の動作がおかしくなるときがある模様
+  //      そのため、設定が反映(trueが返る)まで繰り返す処理にしている
+  while (!setCpuFrequencyMhz(CPU_FREQUENCY_MHZ)) {
+    ; // NOP
+  }
 
   // フォントサイズをデフォルトの2倍に
   // M5.Lcd.setTextSize(2);
