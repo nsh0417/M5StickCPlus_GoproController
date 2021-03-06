@@ -11,17 +11,21 @@
  * - https://msr-r.net/m5stack-wifi/
  *
  * TODO: 追加予定機能
- * 1. 画面スリープ、CPUクロック低下、LCD低下（バッテリ対策）
- *    - 画面スリープはしない方がいいかも、ということで未対応
- *      - [M5StickCであそぶ 〜バッテリーを使う〜 MUDAなことをしよう](https://make-muda.net/2019/09/6946/)
  * 2. メッセージが古いものから消えるように対応する
  * 3. 画面表示をアイコンとか使って表示する
  * 4. コメントの書き方とかが適当なので修正する
+ * 5. リファクタリング（とりあえず動くことが最優先）
+ * 6. GOPROのSSIDやパスは設定ファイルで対応できるようにする
  */
 #include <M5StickCPlus.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 
+/*
+ * バッテリ省電力化
+ *  - 画面スリープはしない方がいいかも、ということで未対応
+ *  - [M5StickCであそぶ 〜バッテリーを使う〜 MUDAなことをしよう](https://make-muda.net/2019/09/6946/)
+ */
 // LCDの明るさ（min 7 /max 12)
 // https://lang-ship.com/reference/unofficial/M5StickC/Class/AXP192/
 #define LCD_BRIGHTNESS 10
@@ -33,11 +37,17 @@
 // LEDのON/OFF
 #define LED_ON  LOW
 #define LED_OFF HIGH
+
 // 表示メッセージ
-#define MESSAGE_SETUP "Gopro setup completed!"
-#define MESSAGE_START_REC "Recording started."
-#define MESSAGE_STOP_REC "Recording stopped."
+#define MESSAGE_GOPRO_WAITING "%s connecting, please wait"
+#define MESSAGE_GOPRO_CONNECTED "\r\n%s connected!\r\n"
+#define MESSAGE_SETUP_COMPLETED "Gopro setup completed!"
+#define MESSAGE_REC_STARTED "Recording started."
+#define MESSAGE_REC_STOPPED "Recording stopped."
 #define MESSAGE_KEEP_ALIVE_OK "keep alive: OK"
+#define MESSAGE_HTTP_NG "HTTP NG: %d\n"
+#define MESSAGE_REC_FAILED "Recording is dead, or network unreachtable!: %d\n"
+
 // KEEP ALIVE間隔(msec)
 #define KEEP_ALIVE_MSEC 30 * 1000
 
@@ -54,9 +64,7 @@
 #define GOPRO_SETUP GOPRO_URI "gpControl/execute?p1=gpStream&c1=restart"
 #define GOPRO_REC_START GOPRO_URI "gpControl/command/shutter?p=1"
 #define GOPRO_REC_STOP GOPRO_URI "gpControl/command/shutter?p=0"
-
 #define GOPRO_STATUS GOPRO_URI "gpControl/status"
-
 // #define GOPRO_URI "http://192.168.11.1/login.html"
 
 // 録画中か否か
@@ -95,7 +103,7 @@ void setup() {
   // WiFi設定
   WiFi.begin(SSID, PASSWORD);
 
-  M5.Lcd.printf("%s connecting, please wait", SSID);
+  M5.Lcd.printf(MESSAGE_GOPRO_WAITING, SSID);
   // FIXME: 接続後に再起動すると、接続されない。次回再起動後に正常に接続可
   //        シャットダウン前に開放するなどの処理が必要？
   //        WiFiルータでは問題なし、GoProのみ発生
@@ -103,7 +111,7 @@ void setup() {
     delay(500);
     M5.Lcd.print(".");
   }
-  M5.Lcd.printf("\r\n%s connected!\r\n", SSID);
+  M5.Lcd.printf(MESSAGE_GOPRO_CONNECTED, SSID);
   gopro_setup();
 
   // 録画中のkeep alive監視用スレッド
@@ -128,7 +136,7 @@ void loop() {
  * @return boolean 成功/失敗
  */
 boolean gopro_setup() {
-  return control_gopro(GOPRO_SETUP, LED_OFF, MESSAGE_SETUP);
+  return control_gopro(GOPRO_SETUP, LED_OFF, MESSAGE_SETUP_COMPLETED);
 }
 /**
  * @brief 録画開始
@@ -136,7 +144,7 @@ boolean gopro_setup() {
  * @return boolean 成功/失敗
  */
 boolean start_rec() {
-  return control_gopro(GOPRO_REC_START, LED_ON, MESSAGE_START_REC);
+  return control_gopro(GOPRO_REC_START, LED_ON, MESSAGE_REC_STARTED);
 }
 /**
  * @brief 録画停止
@@ -144,7 +152,7 @@ boolean start_rec() {
  * @return boolean 成功/失敗
  */
 boolean stop_rec() {
-  return control_gopro(GOPRO_REC_STOP, LED_OFF, MESSAGE_STOP_REC);
+  return control_gopro(GOPRO_REC_STOP, LED_OFF, MESSAGE_REC_STOPPED);
 }
 boolean get_status() {
   return control_gopro(GOPRO_STATUS, LED_OFF, "Get Status!");
@@ -163,14 +171,13 @@ boolean control_gopro(const char* uri, const uint8_t led, const char* lcd_str) {
   HTTPClient http;
   http.begin(uri);
 
-  // M5.Lcd.println(uri);
   int http_code = http.GET();
   if (http_code == HTTP_CODE_OK) {
         digitalWrite(LED_PIN, led);
         M5.Lcd.println(lcd_str);
         return true;
   } else {
-    M5.Lcd.printf("HTTP NG: %d\n", http_code);
+    M5.Lcd.printf(MESSAGE_HTTP_NG, http_code);
   }
   return false;
 }
@@ -190,7 +197,7 @@ void keep_alive(void* arg) {
       if (http_code == HTTP_CODE_OK) {
         M5.Lcd.println(MESSAGE_KEEP_ALIVE_OK);
       } else {
-        M5.Lcd.printf("Recording is dead, or network unreachtable!: %d\n", http_code);
+        M5.Lcd.printf(MESSAGE_REC_FAILED, http_code);
       }
     }
     delay(KEEP_ALIVE_MSEC);
