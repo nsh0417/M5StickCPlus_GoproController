@@ -1,21 +1,6 @@
 /**
  * M5StickC+をGoProと接続し、M5ボタンで録画開始/停止を行う
- *
- * note
- * - 開発者が持つGoProはHERO+のみのため、それ用の動作になります。
- * - 各APIは下記を参考にしているので、そちらを見て書き換えてください。
- * - [goprowifihack](https://github.com/KonradIT/goprowifihack/)
- *
- * - M5StickC : https://make-muda.net/2019/09/6906/
- * - M5StickC+: https://github.com/m5stack/M5StickC-Plus
- * - https://msr-r.net/m5stack-wifi/
- *
- * TODO: 追加予定機能
- * 2. メッセージが古いものから消えるように対応する
- * 3. 画面表示をアイコンとか使って表示する
- * 4. コメントの書き方とかが適当なので修正する
- * 5. リファクタリング（とりあえず動くことが最優先）
- * 6. GOPROのSSIDやパスは設定ファイルで対応できるようにする
+ * 開発者が持つGoProはHERO+のみのため、それ用の動作になります。
  */
 #include <M5StickCPlus.h>
 #include <WiFi.h>
@@ -24,10 +9,8 @@
 /*
  * バッテリ省電力化
  *  - 画面スリープはしない方がいいかも、ということで未対応
- *  - [M5StickCであそぶ 〜バッテリーを使う〜 MUDAなことをしよう](https://make-muda.net/2019/09/6946/)
  */
 // LCDの明るさ（min 7 /max 12)
-// https://lang-ship.com/reference/unofficial/M5StickC/Class/AXP192/
 #define LCD_BRIGHTNESS 10
 // CPU周波数: 240(default), 160, 80, 40, 20, 10から選択可
 #define CPU_FREQUENCY_MHZ 80
@@ -57,9 +40,6 @@
 #define PASSWORD "gopro"
 
 // GoPro APIのURI
-// note : https://github.com/KonradIT/goprowifihack/blob/master/HERO/WifiCommands.md
-//        https://android.benigumo.com/20180116/gopro-hero6-wifi/
-//        http://hiroeki1.blog129.fc2.com/blog-entry-400.html
 #define GOPRO_URI "http://10.5.5.9/gp/"
 #define GOPRO_SETUP GOPRO_URI "gpControl/execute?p1=gpStream&c1=restart"
 #define GOPRO_REC_START GOPRO_URI "gpControl/command/shutter?p=1"
